@@ -1,0 +1,5 @@
+main: com.projectkorra.glowapi.PKGlowAPI
+name: PKGlowAPI
+version: '1.0'
+depend:
+- ProtocolLib
