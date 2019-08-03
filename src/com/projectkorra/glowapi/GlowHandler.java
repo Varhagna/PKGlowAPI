@@ -1,6 +1,7 @@
 package com.projectkorra.glowapi;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,8 +15,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitScheduler;
 
-import com.projectkorra.glowapi.util.Reflection.FieldAccessor;
-import com.projectkorra.glowapi.util.Reflection;
+import com.projectkorra.projectkorra.util.ReflectionHandler;
 import com.projectkorra.glowapi.util.TinyProtocol;
 
 import io.netty.channel.Channel;
@@ -27,22 +27,28 @@ public class GlowHandler {
 	private int trackingRange;
 
 	private Class<?> eDataClass;
-	private Class<?> iDataClass;
-	private FieldAccessor<List> entityData;
-	private FieldAccessor<Integer> entityId;
+	private Field entityData;
 
-	private HashMap<Player, List<LivingEntity>> affectedEntities;
+	private final HashMap<Player, List<LivingEntity>> affectedEntities = new HashMap<Player, List<LivingEntity>>();
 
-	private ArrayList<LivingEntity> entities;
+	private final ArrayList<LivingEntity> entities = new ArrayList<LivingEntity>();
 
 	public GlowHandler() {
-		affectedEntities = new HashMap<Player, List<LivingEntity>>();
-
-		entities = new ArrayList<LivingEntity>();
 
 		trackingRange = getTrackingRange();
 
-		initializePacketData();
+		try {
+			initializePacketData();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchFieldException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SecurityException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		checkGlow();
 
@@ -89,11 +95,9 @@ public class GlowHandler {
 		return trackingRange;
 	}
 
-	private void initializePacketData() {
-		eDataClass = Reflection.getClass("{nms}.PacketPlayOutEntityMetadata");
-		iDataClass = Reflection.getClass("{nms}.DataWatcher$Item");
-		entityData = Reflection.getField(eDataClass, "b", List.class);
-		entityId = Reflection.getField(eDataClass, int.class, 0);
+	private void initializePacketData() throws ClassNotFoundException, NoSuchFieldException, SecurityException {
+		eDataClass = ReflectionHandler.PackageType.MINECRAFT_SERVER.getClass("PacketPlayOutEntityMetadata");
+		entityData = ReflectionHandler.getField(eDataClass, false, "b");
 	}
 
 	/**
@@ -106,21 +110,21 @@ public class GlowHandler {
 			@Override
 			public Object onPacketOutAsync(Player receiver, Channel channel, Object packet) {
 				String type = null;
-				FieldAccessor<List> metaData = entityData;
-				FieldAccessor<Integer> id = entityId;
-
-				if (metaData.hasField(packet)) {
-
-					Object packetData = Reflection.getMethod(iDataClass, "b").invoke(metaData.get(packet).get(0));
+				try {
+				
+				Integer entityId = (Integer) ReflectionHandler.getValue(packet, false, "a");
+				List<?> packetData = (List<?>) ReflectionHandler.getValue(packet, false, "b");
+				
+				if (entityData.getType().getSimpleName().equalsIgnoreCase(packetData.getClass().getSimpleName())) {
+	
 
 					if(packetData != null) {
-
-						type = packetData.getClass().getSimpleName();
+						Object data = packetData.get(0);
+						type = ReflectionHandler.invokeMethod(data, "b").getClass().getSimpleName();
 
 						if (type != null && type.equals("Byte")) {
-							byte incoming = (byte) packetData;
+							byte incoming = (byte) ReflectionHandler.invokeMethod(data, "b");
 							byte mask = 0x40;
-							int entityId = id.get(packet);
 
 							if ((mask & incoming) == mask) {
 								if (!isGlowReceiver(receiver)) {
@@ -132,6 +136,9 @@ public class GlowHandler {
 
 						}
 					}
+				}
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 				return super.onPacketOutAsync(receiver, channel, packet);
 			}
