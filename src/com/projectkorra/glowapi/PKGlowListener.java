@@ -9,7 +9,6 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 public class PKGlowListener implements Listener {
-
 	GlowHandler g = PKGlowAPI.plugin.getGlowHandler();
 
 	@EventHandler
