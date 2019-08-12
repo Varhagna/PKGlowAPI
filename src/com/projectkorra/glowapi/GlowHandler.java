@@ -21,32 +21,21 @@ import com.projectkorra.glowapi.util.TinyProtocol;
 import io.netty.channel.Channel;
 
 public class GlowHandler {
-
 	private FileConfiguration config;
-
 	private int trackingRange;
 
 	private Class<?> eDataClass;
 	private Field entityData;
 
+	private final ArrayList<LivingEntity> entities = new ArrayList<LivingEntity>();
 	private final HashMap<Player, List<LivingEntity>> affectedEntities = new HashMap<Player, List<LivingEntity>>();
 
-	private final ArrayList<LivingEntity> entities = new ArrayList<LivingEntity>();
-
 	public GlowHandler() {
-
 		trackingRange = getTrackingRange();
 
 		try {
 			initializePacketData();
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (NoSuchFieldException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (SecurityException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
@@ -75,7 +64,6 @@ public class GlowHandler {
 				}
 			}
 		}, 0L, 20L);
-
 	}
 
 	/**
@@ -90,9 +78,7 @@ public class GlowHandler {
 		File file = new File(".." + File.separator + "spigot.yml");
 		config = YamlConfiguration.loadConfiguration(file);
 
-		trackingRange = config.getInt("world-settings.default.entity-tracking-range.players");
-
-		return trackingRange;
+		return config.getInt("world-settings.default.entity-tracking-range.players");
 	}
 
 	private void initializePacketData() throws ClassNotFoundException, NoSuchFieldException, SecurityException {
@@ -106,40 +92,36 @@ public class GlowHandler {
 	 */
 	private void checkGlow() {
 		new TinyProtocol(PKGlowAPI.plugin) {
-
 			@Override
 			public Object onPacketOutAsync(Player receiver, Channel channel, Object packet) {
 				String type = null;
 				try {
+					Integer entityId = (Integer) ReflectionHandler.getValue(packet, false, "a");
+					List<?> packetData = (List<?>) ReflectionHandler.getValue(packet, false, "b");
 				
-				Integer entityId = (Integer) ReflectionHandler.getValue(packet, false, "a");
-				List<?> packetData = (List<?>) ReflectionHandler.getValue(packet, false, "b");
-				
-				if (entityData.getType().getSimpleName().equalsIgnoreCase(packetData.getClass().getSimpleName())) {
-	
+					if (entityData.getType().getSimpleName().equalsIgnoreCase(packetData.getClass().getSimpleName())) {
+						if (packetData != null) {
+							Object data = packetData.get(0);
+							type = ReflectionHandler.invokeMethod(data, "b").getClass().getSimpleName();
 
-					if(packetData != null) {
-						Object data = packetData.get(0);
-						type = ReflectionHandler.invokeMethod(data, "b").getClass().getSimpleName();
+							if (type != null && type.equals("Byte")) {
+								byte incoming = (byte) ReflectionHandler.invokeMethod(data, "b");
+								byte mask = 0x40;
 
-						if (type != null && type.equals("Byte")) {
-							byte incoming = (byte) ReflectionHandler.invokeMethod(data, "b");
-							byte mask = 0x40;
-
-							if ((mask & incoming) == mask) {
-								if (!isGlowReceiver(receiver)) {
-									return null;
-								} else if (!isGlowEntity(receiver, entityId)) {
-									return null;
+								if ((mask & incoming) == mask) {
+									if (!isGlowReceiver(receiver)) {
+										return null;
+									} else if (!isGlowEntity(receiver, entityId)) {
+										return null;
+									}
 								}
 							}
-
 						}
 					}
-				}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
+	
 				return super.onPacketOutAsync(receiver, channel, packet);
 			}
 		};
@@ -175,6 +157,7 @@ public class GlowHandler {
 		if (isGlowReceiver(receiver)) {
 			return affectedEntities.get(receiver);
 		}
+
 		return null;
 	}
 
@@ -206,6 +189,7 @@ public class GlowHandler {
 				}
 			}
 		}
+
 		return false;
 	}
 
@@ -239,7 +223,7 @@ public class GlowHandler {
 	 * Minecraft does not support adding potion effects for fractions of a second.
 	 */
 	public void add(Player receiver, List<LivingEntity> entities, long duration) {
-		if(receiver != null && entities != null && duration % 1000 == 0) {
+		if (receiver != null && entities != null && duration % 1000 == 0) {
 			for (LivingEntity e : entities) {
 				if (e != null && !this.entities.contains(e)) {
 					this.entities.add(e);
@@ -261,16 +245,16 @@ public class GlowHandler {
 	 */
 	private void runRemoveGlow(LivingEntity entity, long duration) {
 		BukkitScheduler scheduler = PKGlowAPI.plugin.getServer().getScheduler();
+
 		scheduler.scheduleSyncDelayedTask(PKGlowAPI.plugin, new Runnable() {
 			@Override
 			public void run() {
-				if(entity.hasPotionEffect(PotionEffectType.GLOWING)) {
+				if (entity.hasPotionEffect(PotionEffectType.GLOWING)) {
 					entity.removePotionEffect(PotionEffectType.GLOWING);
 				}
 				remove(entity);
 			}
 		}, duration);
-
 	}
 
 	/** Removes the receiving player and all associated entities from GlowHandler
@@ -278,11 +262,13 @@ public class GlowHandler {
 	 * @param receiver - the receiving player
 	 */
 	public void remove(Player receiver) {
-		if(isGlowReceiver(receiver)) {
+		if (isGlowReceiver(receiver)) {
 			List<LivingEntity> removals = affectedEntities.get(receiver);
+
 			for (LivingEntity e : removals) {
 				e.removePotionEffect(PotionEffectType.GLOWING);
 			}
+
 			affectedEntities.remove(receiver);
 			this.entities.removeAll(removals);
 		}
@@ -299,9 +285,11 @@ public class GlowHandler {
 				affectedEntities.get(p).remove(entity);
 			} 
 		}
-		if(entity != null) {
+
+		if (entity != null) {
 			entity.removePotionEffect(PotionEffectType.GLOWING);
 		}
+
 		return this.entities.remove(entity);
 	}
 
@@ -312,14 +300,16 @@ public class GlowHandler {
 	 * @return true if successfully removed, false otherwise
 	 */
 	public boolean remove(Player receiver, LivingEntity entity) {
-		if(receiver != null && isGlowReceiver(receiver)) {
+		if (receiver != null && isGlowReceiver(receiver)) {
 			if (affectedEntities.get(receiver).contains(entity)) {
 				affectedEntities.get(receiver).remove(entity);
 			}
 		}
-		if(entity != null) {
+
+		if (entity != null) {
 			entity.removePotionEffect(PotionEffectType.GLOWING);
 		}
+
 		return this.entities.remove(entity);
 	}
 
