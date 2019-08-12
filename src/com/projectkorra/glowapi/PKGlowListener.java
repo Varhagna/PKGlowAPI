@@ -14,7 +14,7 @@ public class PKGlowListener implements Listener {
 	public void onPlayerQuit(PlayerQuitEvent event) {
 		Player p = event.getPlayer();
 
-		if(g.isGlowEntity(p)) {
+		if (g.isGlowEntity(p)) {
 			g.remove((LivingEntity) p);
 		} else if (g.isGlowReceiver(p)) {
 			g.remove(p);
@@ -25,7 +25,7 @@ public class PKGlowListener implements Listener {
 	public void onPlayerTeleport(PlayerTeleportEvent event) {
 		Player p = event.getPlayer();
 
-		if(g.isGlowEntity(p)) {
+		if (g.isGlowEntity(p)) {
 			g.remove((LivingEntity) p);
 		} else if (g.isGlowReceiver(p)) {
 			g.remove(p);
