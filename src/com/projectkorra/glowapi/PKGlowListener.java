@@ -1,6 +1,5 @@
 package com.projectkorra.glowapi;
 
-
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -14,6 +13,7 @@ public class PKGlowListener implements Listener {
 	@EventHandler
 	public void onPlayerQuit(PlayerQuitEvent event) {
 		Player p = event.getPlayer();
+
 		if(g.isGlowEntity(p)) {
 			g.remove((LivingEntity) p);
 		} else if (g.isGlowReceiver(p)) {
@@ -24,6 +24,7 @@ public class PKGlowListener implements Listener {
 	@EventHandler
 	public void onPlayerTeleport(PlayerTeleportEvent event) {
 		Player p = event.getPlayer();
+
 		if(g.isGlowEntity(p)) {
 			g.remove((LivingEntity) p);
 		} else if (g.isGlowReceiver(p)) {
